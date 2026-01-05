@@ -1,0 +1,117 @@
+<!DOCTYPE html><html lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Racing Game Prototype</title>
+<style>
+  body { margin: 0; background: #111; overflow: hidden; font-family: sans-serif; }
+  #ui {
+    position: absolute; top: 10px; left: 10px; color: #fff; z-index: 10;
+    background: rgba(0,0,0,0.4); padding: 10px 15px; border-radius: 10px;
+  }
+  #vipTag { color: gold; font-weight: bold; }
+  #chatBox {
+    position: absolute; bottom: 10px; left: 10px; width: 250px; height: 120px;
+    background: rgba(0,0,0,0.5); border-radius: 10px; padding: 5px; color: white;
+    overflow-y: auto; font-size: 14px;
+  }
+  #chatInput {
+    position: absolute; bottom: 10px; left: 10px; width: 250px;
+  }
+</style>
+</head>
+<body>
+<div id="ui">
+  <div>🏁 <b>Prototype Racing</b></div>
+  <div>⭐ مستوى اللاعب: <span id="lvl">1</span></div>
+  <div>🔥 نقاط XP: <span id="xp">0</span></div>
+  <div>👑 <span id="vipTag">VIP: OFF</span></div>
+</div><canvas id="game"></canvas>
+
+<div id="chatBox"></div>
+<input id="chatInput" placeholder="اكتب رسالة..." /><script>
+// ===================== إعدادات اللعبة =====================
+let canvas = document.getElementById('game');
+let ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let roadSpeed = 6;
+let player = { x: canvas.width/2, y: canvas.height - 150, w: 60, h: 120, color: '#0f0' };
+let obstacles = [];
+let xp = 0, level = 1;
+let vip = false;
+
+// ===================== توليد سيارات عدو =====================
+function spawnObstacle() {
+  let w = 60;
+  obstacles.push({ x: Math.random() * (canvas.width - w), y: -150, w: w, h: 120, color: '#f00' });
+}
+setInterval(spawnObstacle, 1200);
+
+// ===================== تحديث واجهة المستوى =====================
+function addXP(amount) {
+  xp += amount;
+  if (xp >= level * 100) { xp = 0; level++; }
+  document.getElementById('xp').innerText = xp;
+  document.getElementById('lvl').innerText = level;
+}
+
+// ===================== الرسم =====================
+function drawRoad() {
+  ctx.fillStyle = '#555';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 5;
+  ctx.setLineDash([40, 40]);
+  ctx.beginPath();
+  ctx.moveTo(canvas.width/2, 0);
+  ctx.lineTo(canvas.width/2, canvas.height);
+  ctx.stroke();
+}
+
+function gameLoop() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawRoad();
+
+  // لاعب
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  // عوائق
+  obstacles.forEach((o, i) => {
+    o.y += roadSpeed;
+    ctx.fillStyle = o.color;
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    if (o.y > canvas.height) {
+      obstacles.splice(i, 1);
+      addXP(10);
+    }
+  });
+
+  requestAnimationFrame(gameLoop);
+}
+gameLoop();
+
+// ===================== حركة اللاعب =====================
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') player.x -= 30;
+  if (e.key === 'ArrowRight') player.x += 30;
+});
+
+// ===================== دردشة كتابية =====================
+let chatBox = document.getElementById('chatBox');
+let chatInput = document.getElementById('chatInput');
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    let msg = chatInput.value.trim();
+    if (msg.length > 0) {
+      chatBox.innerHTML += `<div>👤 لاعب: ${msg}</div>`;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    chatInput.value = '';
+  }
+});
+
+</script></body>
+</html>
