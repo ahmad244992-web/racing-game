@@ -1,117 +1,182 @@
-<!DOCTYPE html><html lang="ar">
+<!DOCTYPE html>
+<html lang="ar">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Racing Game Prototype</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turbo Legends</title>
+
 <style>
-  body { margin: 0; background: #111; overflow: hidden; font-family: sans-serif; }
-  #ui {
-    position: absolute; top: 10px; left: 10px; color: #fff; z-index: 10;
-    background: rgba(0,0,0,0.4); padding: 10px 15px; border-radius: 10px;
-  }
-  #vipTag { color: gold; font-weight: bold; }
-  #chatBox {
-    position: absolute; bottom: 10px; left: 10px; width: 250px; height: 120px;
-    background: rgba(0,0,0,0.5); border-radius: 10px; padding: 5px; color: white;
-    overflow-y: auto; font-size: 14px;
-  }
-  #chatInput {
-    position: absolute; bottom: 10px; left: 10px; width: 250px;
-  }
+body {
+  margin:0;
+  background:#111;
+  overflow:hidden;
+  font-family:Arial;
+}
+#ui {
+  position:absolute;
+  top:10px; left:10px;
+  background:rgba(0,0,0,0.6);
+  color:#fff;
+  padding:12px;
+  border-radius:12px;
+  z-index:10;
+}
+#ui div { margin-bottom:4px; }
+#vip { color:gold; font-weight:bold; }
+
+#controls {
+  position:absolute;
+  bottom:20px;
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  padding:0 40px;
+}
+.btn {
+  width:70px; height:70px;
+  background:rgba(255,255,255,0.2);
+  border-radius:50%;
+  color:#fff;
+  font-size:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
+}
 </style>
 </head>
+
 <body>
+
 <div id="ui">
-  <div>🏁 <b>Prototype Racing</b></div>
-  <div>⭐ مستوى اللاعب: <span id="lvl">1</span></div>
-  <div>🔥 نقاط XP: <span id="xp">0</span></div>
-  <div>👑 <span id="vipTag">VIP: OFF</span></div>
-</div><canvas id="game"></canvas>
+  <div>🏁 <b>Turbo Legends</b></div>
+  <div>⭐ Level: <span id="lvl">1</span></div>
+  <div>🔥 XP: <span id="xp">0</span>/100</div>
+  <div>🟡 Coins: <span id="coins">0</span></div>
+  <div>🔵 Gems: <span id="gems">0</span></div>
+  <div id="vip">👑 VIP: OFF</div>
+</div>
 
-<div id="chatBox"></div>
-<input id="chatInput" placeholder="اكتب رسالة..." /><script>
-// ===================== إعدادات اللعبة =====================
-let canvas = document.getElementById('game');
-let ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+<canvas id="game"></canvas>
 
-let roadSpeed = 6;
-let player = { x: canvas.width/2, y: canvas.height - 150, w: 60, h: 120, color: '#0f0' };
-let obstacles = [];
-let xp = 0, level = 1;
+<div id="controls">
+  <div class="btn" id="left">◀</div>
+  <div class="btn" id="right">▶</div>
+</div>
+
+<script>
+/* =================== الإعدادات =================== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+/* اللاعب */
+let player = {
+  x: canvas.width/2 - 30,
+  y: canvas.height - 150,
+  w: 60,
+  h: 120,
+  speed: 8
+};
+
+/* التقدم */
+let level = 1;
+let xp = 0;
+let coins = 0;
+let gems = 0;
 let vip = false;
 
-// ===================== توليد سيارات عدو =====================
-function spawnObstacle() {
-  let w = 60;
-  obstacles.push({ x: Math.random() * (canvas.width - w), y: -150, w: w, h: 120, color: '#f00' });
-}
-setInterval(spawnObstacle, 1200);
+/* أعداء */
+let enemies = [];
+let gameOver = false;
 
-// ===================== تحديث واجهة المستوى =====================
-function addXP(amount) {
-  xp += amount;
-  if (xp >= level * 100) { xp = 0; level++; }
-  document.getElementById('xp').innerText = xp;
-  document.getElementById('lvl').innerText = level;
+/* =================== وظائف =================== */
+function spawnEnemy() {
+  enemies.push({
+    x: Math.random() * (canvas.width - 60),
+    y: -150,
+    w: 60,
+    h: 120,
+    speed: 6 + level * 0.2
+  });
+}
+setInterval(spawnEnemy, 1200);
+
+function addXP(v) {
+  xp += v;
+  if (xp >= 100) {
+    xp = 0;
+    level++;
+    coins += 100;
+    if (level % 5 === 0) gems++;
+  }
 }
 
-// ===================== الرسم =====================
-function drawRoad() {
-  ctx.fillStyle = '#555';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 5;
-  ctx.setLineDash([40, 40]);
+function collide(a,b){
+  return a.x < b.x+b.w && a.x+a.w > b.x &&
+         a.y < b.y+b.h && a.y+a.h > b.y;
+}
+
+/* =================== الرسم =================== */
+function drawRoad(){
+  ctx.fillStyle="#555";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle="#fff";
+  ctx.lineWidth=5;
+  ctx.setLineDash([40,40]);
   ctx.beginPath();
-  ctx.moveTo(canvas.width/2, 0);
-  ctx.lineTo(canvas.width/2, canvas.height);
+  ctx.moveTo(canvas.width/2,0);
+  ctx.lineTo(canvas.width/2,canvas.height);
   ctx.stroke();
 }
 
-function gameLoop() {
+function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawRoad();
 
-  // لاعب
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.w, player.h);
+  /* اللاعب */
+  ctx.fillStyle="#0f0";
+  ctx.fillRect(player.x,player.y,player.w,player.h);
 
-  // عوائق
-  obstacles.forEach((o, i) => {
-    o.y += roadSpeed;
-    ctx.fillStyle = o.color;
-    ctx.fillRect(o.x, o.y, o.w, o.h);
-    if (o.y > canvas.height) {
-      obstacles.splice(i, 1);
-      addXP(10);
+  /* الأعداء */
+  enemies.forEach((e,i)=>{
+    e.y += e.speed;
+    ctx.fillStyle="red";
+    ctx.fillRect(e.x,e.y,e.w,e.h);
+
+    if (collide(player,e)) {
+      gameOver = true;
+      alert("💥 Game Over");
+      location.reload();
+    }
+
+    if (e.y > canvas.height) {
+      enemies.splice(i,1);
+      addXP(vip ? 20 : 10);
+      coins += vip ? 20 : 10;
     }
   });
 
-  requestAnimationFrame(gameLoop);
+  /* تحديث الواجهة */
+  document.getElementById("lvl").innerText = level;
+  document.getElementById("xp").innerText = xp;
+  document.getElementById("coins").innerText = coins;
+  document.getElementById("gems").innerText = gems;
+  document.getElementById("vip").innerText = vip ? "👑 VIP: ON" : "👑 VIP: OFF";
+
+  requestAnimationFrame(loop);
 }
-gameLoop();
+loop();
 
-// ===================== حركة اللاعب =====================
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowLeft') player.x -= 30;
-  if (e.key === 'ArrowRight') player.x += 30;
+/* =================== تحكم =================== */
+document.getElementById("left").ontouchstart = ()=>player.x -= player.speed*4;
+document.getElementById("right").ontouchstart = ()=>player.x += player.speed*4;
+
+window.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft") player.x -= player.speed*4;
+  if(e.key==="ArrowRight") player.x += player.speed*4;
 });
-
-// ===================== دردشة كتابية =====================
-let chatBox = document.getElementById('chatBox');
-let chatInput = document.getElementById('chatInput');
-chatInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    let msg = chatInput.value.trim();
-    if (msg.length > 0) {
-      chatBox.innerHTML += `<div>👤 لاعب: ${msg}</div>`;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-    chatInput.value = '';
-  }
-});
-
-</script></body>
+</script>
+</body>
 </html>
